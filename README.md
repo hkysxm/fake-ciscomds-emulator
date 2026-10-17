@@ -83,3 +83,13 @@ clear lab faults
 - `src/lib/catalog.ts`：命令参考、缩写和补全。
 - `src/App.tsx`：终端、设备切换、故障控制、本地存储。
 - `tests/`：命令行为测试与 Playwright 浏览器测试。
+
+## GitHub Pages
+
+仓库已包含 `.github/workflows/pages.yml`，使用 GitHub Actions 构建并发布 `dist/`，自动适配仓库路径或自定义域名。部署前请先将 `codex/mds-lab` 分支合并到 `main`。
+
+1. 在仓库的 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**。
+2. 合并分支到 `main`，触发 **Deploy MDS Lab to GitHub Pages**；若合并时还未启用 Pages，可启用后在 **Actions** 中选择此工作流并点击 **Run workflow**，选择 `main`。
+3. 等待 `build` 和 `deploy` 成功，在 **Settings → Pages** 查看实际访问地址。默认地址为 `https://hkysxm.github.io/fake-ciscomds-emulator/`。
+
+普通 GitHub Pages 网站通常公开可访问；私有仓库发布 Pages 需要支持该功能的 GitHub 套餐，私有仓库本身不会让 Pages 网站自动变为私有。如果需要访问控制，请使用支持站点访问控制的部署方式。此应用的命令与配置仍仅存储在访问者各自的浏览器中，不会提交回仓库。
