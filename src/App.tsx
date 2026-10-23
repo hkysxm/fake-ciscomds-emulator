@@ -25,6 +25,7 @@ import {
 import type { FaultId, Model, Session, SwitchState } from "./lib/model";
 import {
   createSwitch,
+  migrateSwitch,
   FAULTS,
   freshSession,
   hasFault,
@@ -33,12 +34,14 @@ import {
   prompt,
   toggleFault,
 } from "./lib/model";
+import PortEditor from "./PortEditor";
 import { execute } from "./lib/engine";
 import {
   commandGroups,
   complete,
   SHOW_COMMANDS,
   CONFIG_COMMANDS,
+  PORT_COMMANDS,
 } from "./lib/catalog";
 
 type Entry = {
@@ -90,7 +93,7 @@ function load(): Record<Model, Device> {
         candidate.activeZoneSets &&
         candidate.saved &&
         Array.isArray(candidate.faults)
-          ? candidate
+          ? migrateSwitch(candidate)
           : createSwitch(model);
       return [
         model,
@@ -121,6 +124,7 @@ export default function App() {
   const [active, setActive] = useState<Model>("9710");
   const [input, setInput] = useState("");
   const [faultPort, setFaultPort] = useState("fc1/1");
+  const [portEditor, setPortEditor] = useState(false);
   const [reference, setReference] = useState(false);
   const [search, setSearch] = useState("");
   const [reset, setReset] = useState(false);
@@ -165,8 +169,8 @@ export default function App() {
     jump();
   }, [active, d.entries]);
   useEffect(() => {
-    if (!reference && !reset) focus();
-  }, [active, reference, reset]);
+    if (!reference && !reset && !portEditor) focus();
+  }, [active, reference, reset, portEditor]);
   useEffect(() => {
     if (!reference && !reset) return;
     const prev = document.activeElement as HTMLElement | null;
@@ -416,9 +420,13 @@ export default function App() {
     ? [
         {
           name: "搜索结果",
-          commands: [...new Set([...SHOW_COMMANDS, ...CONFIG_COMMANDS])].filter(
-            (c) => c.toLowerCase().includes(search.toLowerCase()),
-          ),
+          commands: [
+            ...new Set([
+              ...SHOW_COMMANDS,
+              ...CONFIG_COMMANDS,
+              ...PORT_COMMANDS,
+            ]),
+          ].filter((c) => c.toLowerCase().includes(search.toLowerCase())),
         },
       ]
     : commandGroups;
@@ -523,6 +531,12 @@ export default function App() {
               </span>
             </div>
           </div>
+          <button
+            className="port-config-button"
+            onClick={() => setPortEditor(true)}
+          >
+            配置端口 · {faultPort}
+          </button>
           <div className="sidebar-section fault-section">
             <div className="section-label">
               <span className="label-with-icon">
@@ -796,6 +810,31 @@ export default function App() {
           </span>
         </footer>
       </main>
+      {portEditor && (
+        <PortEditor
+          state={state}
+          port={faultPort}
+          onClose={() => setPortEditor(false)}
+          onApply={(next, commands) => {
+            setDevices((prev) => ({
+              ...prev,
+              [active]: {
+                ...prev[active],
+                state: next,
+                entries: [
+                  ...prev[active].entries,
+                  {
+                    id: crypto.randomUUID(),
+                    command: commands.join("\n"),
+                    output: "端口配置已应用。",
+                    prompt: `${next.hostname}#`,
+                  },
+                ].slice(-800),
+              },
+            }));
+          }}
+        />
+      )}
       {reference && (
         <div className="drawer-overlay" onClick={() => setReference(false)}>
           <div

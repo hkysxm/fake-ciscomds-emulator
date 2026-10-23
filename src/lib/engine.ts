@@ -341,6 +341,38 @@ export function execute(
     s.revision++;
     return done(output);
   };
+  const defaults = raw.match(/^default interface (.+)$/i);
+  if (defaults) {
+    const ids = resolvePorts(s, defaults[1]);
+    if (!ids) return fail("Invalid interface or range.");
+    for (const id of ids)
+      Object.assign(s.ports[id], {
+        description: "",
+        mode: "F",
+        speed: 32,
+        speedAuto: false,
+        bbCredit: 16,
+        beacon: false,
+        linkTraps: true,
+        adminDown: false,
+        vsan: 1,
+        trunk: false,
+        allowedVsans: [1, 10, 20],
+        portChannel: null,
+      });
+    return configChanged();
+  }
+  const clone = raw.match(/^(zone|zoneset) clone (\S+) (\S+) vsan (\d+)$/);
+  if (clone) {
+    const [, kind, from, to, v] = clone;
+    if (!validName(to)) return fail("Invalid destination name.");
+    const db = kind === "zone" ? s.zones : s.zoneSets;
+    const source = db[zoneKey(from, Number(v))];
+    if (!source) return fail("Source does not exist.");
+    if (db[zoneKey(to, Number(v))]) return fail("Destination already exists.");
+    db[zoneKey(to, Number(v))] = { ...structuredClone(source), name: to };
+    return configChanged();
+  }
   const int = raw.match(/^interface (?:range )?(.+)$/i);
   if (int) {
     if (int[1] === "mgmt0") {
@@ -570,6 +602,79 @@ export function execute(
       ids.forEach(fn);
       return configChanged();
     };
+    const credit = raw.match(/^switchport fcrxbbcredit (\d+)$/);
+    if (credit) {
+      const n = Number(credit[1]);
+      if (n < 1 || n > 500) return fail("Lab receive BB Credit range: 1-500.");
+      return apply((id) => {
+        s.ports[id].bbCredit = n;
+      });
+    }
+    if (raw === "no switchport fcrxbbcredit")
+      return apply((id) => {
+        s.ports[id].bbCredit = 16;
+      });
+    if (raw === "beacon" || raw === "no beacon")
+      return apply((id) => {
+        s.ports[id].beacon = raw === "beacon";
+      });
+    if (raw === "snmp trap link-status" || raw === "no snmp trap link-status")
+      return apply((id) => {
+        s.ports[id].linkTraps = !raw.startsWith("no ");
+      });
+    const portVsan = raw.match(/^switchport vsan (\d+)$/);
+    if (portVsan || raw === "no switchport vsan") {
+      const v = portVsan ? Number(portVsan[1]) : 1;
+      if (!s.vsans[v]) return fail("VSAN does not exist.");
+      return apply((id) => {
+        s.ports[id].vsan = v;
+      });
+    }
+    const resetField: Record<string, () => Result> = {
+      "no switchport speed": () =>
+        apply((id) => {
+          s.ports[id].speed = 32;
+          s.ports[id].speedAuto = false;
+        }),
+      "no switchport mode": () =>
+        apply((id) => {
+          s.ports[id].mode = "F";
+        }),
+      "no switchport trunk mode": () =>
+        apply((id) => {
+          s.ports[id].trunk = false;
+        }),
+      "no switchport trunk allowed vsan": () =>
+        apply((id) => {
+          s.ports[id].allowedVsans = [1, 10, 20];
+        }),
+    };
+    if (resetField[raw]) return resetField[raw]();
+    const endpoint = raw.match(
+      /^lab endpoint (disconnect|connect (Initiator|Target|Switch) pwwn (\S+))$/i,
+    );
+    if (endpoint) {
+      if (endpoint[1].toLowerCase() === "disconnect")
+        return apply((id) => {
+          s.ports[id].connected = false;
+        });
+      if (ids.length !== 1)
+        return fail("Connect one endpoint at a time (unique PWWN required).");
+      const wwn = endpoint[3].toLowerCase();
+      if (!wwnPattern.test(wwn)) return fail("Invalid PWWN.");
+      if (
+        Object.values(s.ports).some(
+          (p) => p.id !== ids[0] && p.connected && p.wwn === wwn,
+        )
+      )
+        return fail("PWWN already connected to another port.");
+      return apply((id) => {
+        s.ports[id].connected = true;
+        s.ports[id].wwn = wwn;
+        s.ports[id].role =
+          endpoint[2][0].toUpperCase() + endpoint[2].slice(1).toLowerCase();
+      });
+    }
     if (raw === "shutdown" || raw === "no shutdown")
       return apply((id) => {
         s.ports[id].adminDown = raw === "shutdown";
@@ -601,6 +706,7 @@ export function execute(
         return fail("Supported speeds: auto, 2000, 4000, 8000, 16000, 32000.");
       return apply((id) => {
         s.ports[id].speed = n;
+        s.ports[id].speedAuto = speed[1] === "auto";
       });
     }
     const trunk = raw.match(/^switchport trunk mode (on|off|auto)$/);

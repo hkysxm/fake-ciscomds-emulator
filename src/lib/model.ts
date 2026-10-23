@@ -11,6 +11,10 @@ export type Port = {
   description: string;
   mode: "auto" | "F" | "E";
   speed: number;
+  speedAuto: boolean;
+  bbCredit: number;
+  beacon: boolean;
+  linkTraps: boolean;
   adminDown: boolean;
   vsan: number;
   trunk: boolean;
@@ -223,6 +227,10 @@ export function createSwitch(model: Model): SwitchState {
               : "",
       mode: isl ? "E" : "F",
       speed: 32,
+      speedAuto: false,
+      bbCredit: 16,
+      beacon: false,
+      linkTraps: true,
       adminDown: false,
       vsan: [1, 2].includes(i) ? 10 : 1,
       trunk: isl,
@@ -336,4 +344,18 @@ export function fcid(s: SwitchState, p: Port) {
   const [slot, port] = p.id.slice(2).split("/").map(Number);
   const area = (s.model === "9710" ? (slot - 1) * 48 : 0) + port - 1;
   return `0x${(s.vsans[p.vsan]?.domain ?? 1).toString(16).padStart(2, "0")}${area.toString(16).padStart(2, "0")}00`;
+}
+
+export function migrateSwitch(state: SwitchState): SwitchState {
+  const result = structuredClone(state);
+  for (const ports of [result.ports, result.saved?.ports]) {
+    if (!ports) continue;
+    for (const port of Object.values(ports)) {
+      port.speedAuto ??= false;
+      port.bbCredit ??= 16;
+      port.beacon ??= false;
+      port.linkTraps ??= true;
+    }
+  }
+  return result;
 }

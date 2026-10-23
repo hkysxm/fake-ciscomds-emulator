@@ -46,20 +46,29 @@ export function runningConfig(s: ConfigSnapshot) {
       !p.adminDown &&
       p.vsan === 1 &&
       !p.trunk &&
-      !p.portChannel
+      !p.portChannel &&
+      !p.speedAuto &&
+      p.bbCredit === 16 &&
+      !p.beacon &&
+      p.linkTraps &&
+      p.allowedVsans.join(",") === "1,10,20"
     )
       continue;
     lines.push("", `interface ${p.id}`);
     if (p.description) lines.push(`  description ${p.description}`);
     lines.push(
       `  switchport mode ${p.mode}`,
-      `  switchport speed ${p.speed * 1000}`,
+      `  switchport speed ${p.speedAuto ? "auto" : p.speed * 1000}`,
     );
-    if (p.trunk)
+    if (p.trunk) lines.push("  switchport trunk mode on");
+    if (p.trunk || p.allowedVsans.join(",") !== "1,10,20")
       lines.push(
-        "  switchport trunk mode on",
-        `  switchport trunk allowed vsan ${p.allowedVsans.join(",")}`,
+        `  switchport trunk allowed vsan ${p.allowedVsans.join(",") || "none"}`,
       );
+    if (p.bbCredit !== 16)
+      lines.push(`  switchport fcrxbbcredit ${p.bbCredit}`);
+    if (p.beacon) lines.push("  beacon");
+    if (!p.linkTraps) lines.push("  no snmp trap link-status");
     if (p.portChannel) lines.push(`  channel-group ${p.portChannel} force`);
     lines.push(`  ${p.adminDown ? "" : "no "}shutdown`);
   }
@@ -270,7 +279,7 @@ export function show(s: SwitchState, cmd: string): string | null {
         : `${p.id}\n  sfp is present\n  Name is CISCO-AVAGO\n  Part Number is AFBR-57G5MZ-CS1\n  Type is 32G FC Shortwave\n  Wavelength is 850 nm\n  Cisco pid is DS-SFP-FC32G-SW\n  Temperature: 35.20 C\n  Voltage: 3.30 V\n  Current: 6.10 mA\n  Tx Power: -2.30 dBm\n  Rx Power: ${hasFault(s, "link-down", p.id) ? "-40.00" : hasFault(s, "crc-errors", p.id) ? "-13.50" : "-3.10"} dBm`;
     if (int[2]?.startsWith("counters"))
       return `${p.id}\n  ${p.rx} bytes input, ${Math.floor(p.rx / 2048)} frames input\n  ${p.tx} bytes output, ${Math.floor(p.tx / 2048)} frames output\n  ${crc} CRC errors, ${crc ? 12 : 0} invalid transmission words\n  ${hasFault(s, "link-down", p.id) ? 1 : 0} link failures, 0 loss of sync, 0 loss of signal\n  ${hasFault(s, "credit-starvation", p.id) ? 18204 : 0} TxWait (2.5us ticks)\n  ${hasFault(s, "credit-starvation", p.id) ? 342 : 0} credit loss recoveries\n  ${hasFault(s, "credit-starvation", p.id) ? 0 : 16} transmit B2B credits remaining\n  ${hasFault(s, "credit-starvation", p.id) ? 9832 : 0} transmit discards\n  0 input OLS, 0 output OLS\n  ${crc} input errors, 0 output errors`;
-    return `${p.id} is ${isUp(s, p) ? "up" : "down"} (${status})\n  ${p.description ? `Description: ${p.description}\n  ` : ""}Hardware is Fibre Channel, SFP is ${hasFault(s, "sfp-missing", p.id) ? "absent" : "short wave laser"}\n  Port WWN is 20:${(parseInt(fcid(s, p).slice(4, 6), 16) + 1).toString(16).padStart(2, "0")}:${s.wwn.slice(6)}\n  Admin port mode is ${p.mode}, trunk mode is ${p.trunk ? "on" : "off"}\n  snmp link state traps are enabled\n  Port mode is ${isUp(s, p) ? operationalMode(p) : "--"}, FCID is ${fcid(s, p)}\n  Port vsan is ${p.vsan}\n  Speed is ${isUp(s, p) ? `${p.speed} Gbps` : "auto"}\n  Beacon is turned off\n  Transmit B2B Credit is ${hasFault(s, "credit-starvation", p.id) ? 0 : 16}\n  Receive B2B Credit is 16\n  MTU 2112 bytes\n  5 minutes input rate ${isUp(s, p) ? "124928" : "0"} bits/sec\n  5 minutes output rate ${isUp(s, p) ? "248832" : "0"} bits/sec\n  ${p.rx} bytes input, ${p.tx} bytes output\n  ${crc} CRC errors`;
+    return `${p.id} is ${isUp(s, p) ? "up" : "down"} (${status})\n  ${p.description ? `Description: ${p.description}\n  ` : ""}Hardware is Fibre Channel, SFP is ${hasFault(s, "sfp-missing", p.id) ? "absent" : "short wave laser"}\n  Port WWN is 20:${(parseInt(fcid(s, p).slice(4, 6), 16) + 1).toString(16).padStart(2, "0")}:${s.wwn.slice(6)}\n  Admin port mode is ${p.mode}, trunk mode is ${p.trunk ? "on" : "off"}\n  snmp link state traps are ${p.linkTraps ? "enabled" : "disabled"}\n  Port mode is ${isUp(s, p) ? operationalMode(p) : "--"}, FCID is ${fcid(s, p)}\n  Port vsan is ${p.vsan}\n  Speed is ${isUp(s, p) ? `${p.speed} Gbps` : "auto"}\n  Beacon is turned ${p.beacon ? "on" : "off"}\n  Transmit B2B Credit is ${hasFault(s, "credit-starvation", p.id) ? 0 : 16}\n  Receive B2B Credit is ${p.bbCredit}\n  MTU 2112 bytes\n  5 minutes input rate ${isUp(s, p) ? "124928" : "0"} bits/sec\n  5 minutes output rate ${isUp(s, p) ? "248832" : "0"} bits/sec\n  ${p.rx} bytes input, ${p.tx} bytes output\n  ${crc} CRC errors`;
   }
   if (q === "vsan" || /^vsan \d+$/.test(q)) {
     const id = q.match(/^vsan (\d+)$/)?.[1];

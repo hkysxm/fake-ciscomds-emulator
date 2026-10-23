@@ -1437,3 +1437,107 @@ svg {
     visibility: hidden;
   }
 }
+
+.port-config-button {
+  margin: 0 20px 16px;
+  padding: 9px;
+  background: #182329;
+  border: 1px solid #344047;
+  color: #d1ddd8;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.port-editor-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000a;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.port-editor {
+  width: min(640px, 100%);
+  max-height: 90dvh;
+  overflow: auto;
+  background: #10191e;
+  color: #d1ddd8;
+  border: 1px solid #344047;
+  border-radius: 6px;
+  padding: 24px;
+}
+.port-editor h2 {
+  font-size: 18px;
+  margin: 0 0 12px;
+}
+.port-editor p {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.port-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 18px 0;
+}
+.port-editor-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+.port-editor input:not([type="checkbox"]),
+.port-editor select {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  background: #0b1216;
+  color: #d1ddd8;
+  border: 1px solid #344047;
+  border-radius: 3px;
+}
+.port-editor-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 12px;
+  margin-bottom: 20px;
+}
+.port-editor-flags label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.port-editor summary {
+  cursor: pointer;
+  font-size: 12px;
+}
+.port-editor pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.port-editor [role="alert"] {
+  color: #ff9b8f;
+  overflow-wrap: anywhere;
+}
+.port-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 22px;
+}
+.port-editor-actions button {
+  padding: 8px 16px;
+  background: #203b32;
+  color: #d1ddd8;
+  border: 1px solid #426858;
+  border-radius: 3px;
+  cursor: pointer;
+}
+@media (max-width: 480px) {
+  .port-editor-grid {
+    grid-template-columns: 1fr;
+  }
+}

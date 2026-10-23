@@ -82,6 +82,9 @@ export const CONFIG_COMMANDS = [
   "fcalias name <name> vsan <id>",
   "device-alias database",
   "device-alias commit",
+  "default interface fc1/1-4",
+  "zone clone <source> <destination> vsan <id>",
+  "zoneset clone <source> <destination> vsan <id>",
   "hostname <name>",
   "switchname <name>",
   "feature npiv",
@@ -100,6 +103,21 @@ export const CONFIG_COMMANDS = [
 ];
 const modeCommands: Record<string, string[]> = {
   interface: [
+    "switchport vsan <id>",
+    "switchport fcrxbbcredit <1-500>",
+    "no switchport fcrxbbcredit",
+    "beacon",
+    "no beacon",
+    "snmp trap link-status",
+    "no snmp trap link-status",
+    "no switchport vsan",
+    "no switchport speed",
+    "no switchport mode",
+    "no switchport trunk mode",
+    "no switchport trunk allowed vsan",
+    "lab endpoint connect Initiator pwwn <wwn>",
+    "lab endpoint connect Target pwwn <wwn>",
+    "lab endpoint disconnect",
     "description <text>",
     "switchport mode F",
     "switchport mode E",
@@ -252,6 +270,9 @@ const dictionary: Record<string, string[]> = {
     "ntp",
     "ip",
     "snmp-server",
+    "snmp",
+    "beacon",
+    "default",
     "channel-group",
     "lab",
   ],
@@ -293,6 +314,9 @@ const dictionary: Record<string, string[]> = {
     "lab",
   ],
   no: [
+    "snmp",
+    "beacon",
+    "switchport",
     "shutdown",
     "description",
     "feature",
@@ -305,13 +329,16 @@ const dictionary: Record<string, string[]> = {
     "device-alias",
     "ntp",
   ],
-  zone: ["name", "default-zone"],
-  zoneset: ["name", "activate", "distribute"],
+  zone: ["name", "default-zone", "clone"],
+  zoneset: ["name", "activate", "distribute", "clone"],
   fcalias: ["name"],
   member: ["pwwn", "fcid", "fcalias", "device-alias", "interface"],
   "no member": ["pwwn", "fcid", "fcalias", "device-alias", "interface"],
   configure: ["terminal"],
-  switchport: ["mode", "speed", "trunk"],
+  switchport: ["mode", "speed", "trunk", "vsan", "fcrxbbcredit"],
+  snmp: ["trap"],
+  "snmp trap": ["link-status"],
+  default: ["interface"],
   "switchport trunk": ["mode", "allowed"],
   "switchport trunk allowed": ["vsan"],
   "show interface": [
@@ -388,3 +415,5 @@ export function complete(
     options: matches,
   };
 }
+
+export const PORT_COMMANDS = modeCommands.interface;

@@ -245,3 +245,50 @@ test("context help, cancellation and session export work", async ({
   for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
   expect(Buffer.concat(chunks).toString()).toContain("MDS-9710# show version");
 });
+
+test("port editor applies a range, reports errors atomically and survives refresh", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: "配置端口 · fc1/1" }).click();
+  const dialog = page.getByRole("dialog", { name: "端口配置" });
+  await dialog.getByLabel("端口 / 范围").fill("fc1/3-5");
+  await dialog.getByLabel("描述", { exact: true }).fill("Batch SAN");
+  await dialog.getByLabel("VSAN", { exact: true }).selectOption("20");
+  await dialog.getByLabel("接收 BB Credit").fill("64");
+  await dialog.getByLabel("Beacon", { exact: true }).check();
+  await dialog.getByRole("button", { name: "应用配置" }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(await command(page, "show interface fc1/4")).toContainText(
+    "Receive B2B Credit is 64",
+  );
+  await page.reload();
+  await expect(await command(page, "show interface fc1/5")).toContainText(
+    "Description: Batch SAN",
+  );
+  await page.getByRole("button", { name: "配置端口 · fc1/1" }).click();
+  await dialog.getByLabel("端口 / 范围").fill("fc1/3-5");
+  await dialog.getByLabel("描述", { exact: true }).fill("INVALID_CHANGE");
+  await dialog.getByLabel("Trunk 允许 VSAN").fill("4094");
+  await dialog.getByRole("button", { name: "应用配置" }).click();
+  await expect(dialog.getByRole("alert")).toContainText("Invalid VSAN list");
+  await dialog.getByRole("button", { name: "取消" }).click();
+  await expect(await command(page, "show interface fc1/4")).toContainText(
+    "Description: Batch SAN",
+  );
+});
+
+test("port editor connects a new endpoint and makes it visible to FLOGI", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: "配置端口 · fc1/1" }).click();
+  const dialog = page.getByRole("dialog", { name: "端口配置" });
+  await dialog.getByLabel("端口 / 范围").fill("fc1/3");
+  await dialog.getByLabel("模拟设备接入").selectOption("connect");
+  await dialog.getByLabel("设备角色").selectOption("Target");
+  await dialog.getByLabel("设备 PWWN").fill("50:00:00:00:00:00:00:03");
+  await dialog.getByRole("button", { name: "应用配置" }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(await command(page, "show flogi database")).toContainText(
+    "50:00:00:00:00:00:00:03",
+  );
+});
