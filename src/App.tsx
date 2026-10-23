@@ -35,6 +35,7 @@ import {
   toggleFault,
 } from "./lib/model";
 import PortEditor from "./PortEditor";
+import SanPanel from "./SanPanel";
 import { execute } from "./lib/engine";
 import {
   commandGroups,
@@ -42,6 +43,7 @@ import {
   SHOW_COMMANDS,
   CONFIG_COMMANDS,
   PORT_COMMANDS,
+  SAN_COMMANDS,
 } from "./lib/catalog";
 
 type Entry = {
@@ -124,6 +126,7 @@ export default function App() {
   const [active, setActive] = useState<Model>("9710");
   const [input, setInput] = useState("");
   const [faultPort, setFaultPort] = useState("fc1/1");
+  const [sanPanel, setSanPanel] = useState(false);
   const [portEditor, setPortEditor] = useState(false);
   const [reference, setReference] = useState(false);
   const [search, setSearch] = useState("");
@@ -169,8 +172,8 @@ export default function App() {
     jump();
   }, [active, d.entries]);
   useEffect(() => {
-    if (!reference && !reset && !portEditor) focus();
-  }, [active, reference, reset, portEditor]);
+    if (!reference && !reset && !portEditor && !sanPanel) focus();
+  }, [active, reference, reset, portEditor, sanPanel]);
   useEffect(() => {
     if (!reference && !reset) return;
     const prev = document.activeElement as HTMLElement | null;
@@ -425,6 +428,7 @@ export default function App() {
               ...SHOW_COMMANDS,
               ...CONFIG_COMMANDS,
               ...PORT_COMMANDS,
+              ...SAN_COMMANDS,
             ]),
           ].filter((c) => c.toLowerCase().includes(search.toLowerCase())),
         },
@@ -536,6 +540,12 @@ export default function App() {
             onClick={() => setPortEditor(true)}
           >
             配置端口 · {faultPort}
+          </button>
+          <button
+            className="port-config-button"
+            onClick={() => setSanPanel(true)}
+          >
+            服务器与存储
           </button>
           <div className="sidebar-section fault-section">
             <div className="section-label">
@@ -810,6 +820,47 @@ export default function App() {
           </span>
         </footer>
       </main>
+      {sanPanel && (
+        <SanPanel
+          state={state}
+          onClose={() => setSanPanel(false)}
+          onCommands={(commands) => {
+            let next = state,
+              session = freshSession(),
+              output = "",
+              error = "";
+            for (const command of commands) {
+              const result = execute(next, session, command);
+              output = result.output;
+              if (result.error) {
+                error = result.output;
+                next = commands.length === 1 ? result.state : state;
+                break;
+              }
+              next = result.state;
+              session = result.session;
+            }
+            setDevices((prev) => ({
+              ...prev,
+              [active]: {
+                ...prev[active],
+                state: next,
+                entries: [
+                  ...prev[active].entries,
+                  {
+                    id: crypto.randomUUID(),
+                    command: commands.join("\n"),
+                    output,
+                    error: !!error,
+                    prompt: `${next.hostname}#`,
+                  },
+                ].slice(-800),
+              },
+            }));
+            return { output, error };
+          }}
+        />
+      )}
       {portEditor && (
         <PortEditor
           state={state}

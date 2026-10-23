@@ -1,3 +1,5 @@
+import { freshSan } from "./san-model";
+import type { SanState } from "./san-model";
 export type Model = "9710" | "9396";
 export type FaultId =
   | "link-down"
@@ -75,6 +77,7 @@ export type ConfigSnapshot = Pick<
   | "fcdomainPriority"
 >;
 export type SwitchState = {
+  san: SanState;
   model: Model;
   hostname: string;
   serial: string;
@@ -260,6 +263,7 @@ export function createSwitch(model: Model): SwitchState {
     serial: a ? "JAE21490A01" : "JAE22510B02",
     wwn: `20:00:00:0d:ec:${a ? "97:10" : "93:96"}:00`,
     ports,
+    san: freshSan(),
     vsans: {
       1: {
         id: 1,
@@ -348,6 +352,7 @@ export function fcid(s: SwitchState, p: Port) {
 
 export function migrateSwitch(state: SwitchState): SwitchState {
   const result = structuredClone(state);
+  result.san ??= freshSan();
   for (const ports of [result.ports, result.saved?.ports]) {
     if (!ports) continue;
     for (const port of Object.values(ports)) {

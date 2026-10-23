@@ -1541,3 +1541,36 @@ svg {
     grid-template-columns: 1fr;
   }
 }
+.san-panel {
+  width: min(780px, 100%);
+}
+.san-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.san-panel button {
+  background: #203b32;
+  color: #d1ddd8;
+  border: 1px solid #426858;
+  border-radius: 3px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+.san-panel button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.san-paths {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.san-paths > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid #263238;
+}

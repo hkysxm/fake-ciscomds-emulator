@@ -217,6 +217,7 @@ export function suggestions(session: Session): string[] {
   if (mode === "exec")
     return [
       ...SHOW_COMMANDS,
+      ...SAN_COMMANDS,
       "configure terminal",
       "copy running-config startup-config",
       "write memory",
@@ -235,7 +236,11 @@ export function suggestions(session: Session): string[] {
       "exit",
       "help",
     ];
-  return [...(modeCommands[mode] ?? CONFIG_COMMANDS), ...SHOW_COMMANDS];
+  return [
+    ...(modeCommands[mode] ?? CONFIG_COMMANDS),
+    ...SHOW_COMMANDS,
+    ...SAN_COMMANDS,
+  ];
 }
 const dictionary: Record<string, string[]> = {
   root: [
@@ -277,6 +282,7 @@ const dictionary: Record<string, string[]> = {
     "lab",
   ],
   show: [
+    "san",
     "version",
     "switchname",
     "module",
@@ -417,3 +423,26 @@ export function complete(
 }
 
 export const PORT_COMMANDS = modeCommands.interface;
+
+export const SAN_COMMANDS = [
+  "lab san host add <name> <pwwn,pwwn>",
+  "lab san storage add <name> <pwwn,pwwn>",
+  "lab san host policy <name> round-robin",
+  "lab san host policy <name> failover",
+  "lab san storage online <name>",
+  "lab san storage offline <name>",
+  "lab san lun create <storage> <id> <blocks>",
+  "lab san lun online <storage> <id>",
+  "lab san lun offline <storage> <id>",
+  "lab san map <storage> <lun> <host> rw",
+  "lab san map <storage> <lun> <host> ro",
+  "lab san unmap <storage> <lun> <host>",
+  "lab san io write <host> <storage> <lun> <block> <text>",
+  "lab san io read <host> <storage> <lun> <block>",
+  "show san hosts",
+  "show san storage",
+  "show san paths <host> <storage> <lun>",
+  "show san io <host> <storage> <lun>",
+];
+
+commandGroups.push({ name: "服务器与存储", commands: SAN_COMMANDS });

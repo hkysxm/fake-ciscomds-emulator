@@ -292,3 +292,53 @@ test("port editor connects a new endpoint and makes it visible to FLOGI", async 
     "50:00:00:00:00:00:00:03",
   );
 });
+
+test("SAN demo supports multipath failover, masking and persistent block data", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: "服务器与存储", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "服务器与存储" });
+  await dialog
+    .getByRole("button", { name: "创建双 HBA / 双控制器演示" })
+    .click();
+  await expect(dialog).toContainText("可用路径 4 / 4");
+  await dialog
+    .getByLabel("多路径策略", { exact: true })
+    .selectOption("failover");
+  await dialog.getByLabel("写入内容").fill("persistent SAN data");
+  await dialog.getByRole("button", { name: "写入块", exact: true }).click();
+  await expect(dialog.getByRole("status")).toContainText("WRITE OK");
+  await dialog.getByRole("button", { name: "断开 fc1/3", exact: true }).click();
+  await expect(dialog).toContainText("可用路径 2 / 4");
+  await dialog.getByRole("button", { name: "读取块", exact: true }).click();
+  await expect(dialog.getByRole("status")).toContainText(
+    'data: "persistent SAN data"',
+  );
+  await expect(dialog).toContainText("故障切换 1");
+  await dialog.getByRole("button", { name: "断开 fc1/4", exact: true }).click();
+  await dialog.getByRole("button", { name: "读取块", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toContainText("no usable path");
+  await dialog.getByRole("button", { name: "接入 fc1/3", exact: true }).click();
+  await dialog.getByLabel("LUN 映射", { exact: true }).selectOption("ro");
+  await dialog.getByRole("button", { name: "写入块", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toContainText("read-only");
+  await dialog.getByRole("button", { name: "存储离线", exact: true }).click();
+  await expect(dialog).toContainText("可用路径 0 / 4");
+  await dialog.getByRole("button", { name: "存储上线", exact: true }).click();
+  await page.reload();
+  await page.getByRole("button", { name: "服务器与存储", exact: true }).click();
+  await dialog.getByRole("button", { name: "读取块", exact: true }).click();
+  await expect(dialog.getByRole("status")).toContainText(
+    'data: "persistent SAN data"',
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await dialog.getByRole("button", { name: "关闭", exact: true }).click();
+  await expect(
+    await command(page, "show san io DEMO_HOST DEMO_STORAGE 0"),
+  ).toContainText('"failed": 2');
+});
